@@ -1,0 +1,104 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rnaseq-hisat2-rs1-run01
+  namespace: yagmur
+  labels:
+    app.kubernetes.io/component: workflow-driver
+    app.kubernetes.io/name: rnaseq-hisat2-rs1
+    fonda.hu-berlin.de/run-id: HISAT2-RS1-RUN01
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: workflow-driver
+        app.kubernetes.io/name: rnaseq-hisat2-rs1
+        fonda.hu-berlin.de/run-id: HISAT2-RS1-RUN01
+    spec:
+      restartPolicy: Never
+      serviceAccountName: nextflow-sa
+      securityContext:
+        runAsUser: 0
+      initContainers:
+      - name: stage-upstream-source
+        image: alpine/git:latest
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -eu
+          repo=https://github.com/Nine-s/nextflow_RS1_hisat2_new
+          commit=6b7688c7cab3c0bdb39e0e228ceab2bac31e2caa
+          base=/workspace/rnaseq-hisat2-rs1
+          target="$base/source"
+          mkdir -p "$base"
+          if [ -d "$target/.git" ] && [ "$(git -C "$target" rev-parse HEAD 2>/dev/null)" = "$commit" ]; then
+            echo "source already at $commit"
+          else
+            rm -rf "$target"
+            git clone "$repo" "$target"
+            git -C "$target" checkout --quiet "$commit"
+          fi
+          test "$(git -C "$target" rev-parse HEAD)" = "$commit"
+          chmod -R a+rX "$target/bin" || true
+          printf '%s\n' "$commit" > "$base/WORKFLOW_COMMIT_RUN01"
+          git -C "$target" rev-parse HEAD
+          ls -la "$target"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+      containers:
+      - name: nextflow
+        image: nextflow/nextflow@sha256:b035b9fa7243ed09b9896c2b752d9e399f337827932bd45495efb0aed8e1dca1
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -euo pipefail
+          run_dir=/workspace/results/HISAT2-RS1-RUN01
+          source_dir=/workspace/rnaseq-hisat2-rs1/source
+          mkdir -p "$run_dir" /workspace/work-hisat2-rs1-run01
+          cd "$source_dir"
+          trap 'cp "$source_dir/.nextflow.log" "$run_dir/nextflow-debug-HISAT2-RS1-RUN01.log" 2>/dev/null || true' EXIT
+          nextflow run main.nf \
+            -c /run-config/nextflow.config \
+            -name rnaseq_hisat2_rs1_run01 \
+            -with-trace "$run_dir/trace-HISAT2-RS1-RUN01.txt" \
+            -with-report "$run_dir/report-HISAT2-RS1-RUN01.html" \
+            -with-timeline "$run_dir/timeline-HISAT2-RS1-RUN01.html" \
+            -with-dag "$run_dir/dag-HISAT2-RS1-RUN01.html" \
+            2>&1 | tee "$run_dir/nextflow-HISAT2-RS1-RUN01.log"
+        env:
+        - name: RNASEQ_NAMESPACE
+          value: yagmur
+        - name: RNASEQ_SA
+          value: nextflow-sa
+        - name: RNASEQ_PVC
+          value: rnaseq-pvc
+        - name: NXF_HOME
+          value: /workspace/.nextflow
+        - name: NXF_OPTS
+          value: -Xms512M -Xmx3G
+        - name: NXF_ANSI_LOG
+          value: "false"
+        resources:
+          requests:
+            cpu: "1"
+            memory: 2Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        - name: run-config
+          mountPath: /run-config
+          readOnly: true
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: rnaseq-pvc
+      - name: run-config
+        configMap:
+          name: rnaseq-hisat2-rs1-run01-config

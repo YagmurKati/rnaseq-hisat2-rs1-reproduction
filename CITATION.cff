@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: >-
+  This repository only documents how to reproduce a workflow run. If you use the
+  workflow, please cite the ORIGINAL workflow listed under `references`, not this
+  reproduction guide.
+title: "RNA-seq analysis workflow (HISAT2, RS1) — Kubernetes reproduction guide"
+abstract: >-
+  Deployment and run instructions (Kubernetes manifests and Nextflow config) for
+  reproducing the RNA-seq analysis workflow (HISAT2, RS1). The workflow code
+  itself is upstream and is not redistributed here.
+type: software
+authors:
+  - family-names: Kati
+    given-names: Yagmur
+    affiliation: "CRC 1404 FONDA, Humboldt-Universität zu Berlin"
+repository-code: "https://github.com/YagmurKati/rnaseq-hisat2-rs1-reproduction"
+license: MIT
+references:
+  - type: software
+    title: "nextflow_RS1_hisat2_new (RNA-seq analysis workflow, HISAT2, RS1)"
+    repository-code: "https://github.com/Nine-s/nextflow_RS1_hisat2_new"
+    notes: "Pinned commit 6b7688c7cab3c0bdb39e0e228ceab2bac31e2caa"
+    authors:
+      - family-names: "De Mecquenem"
+        given-names: "Ninon"
+        affiliation: "CRC 1404 FONDA, subproject A2 — Energy-Aware Optimization of Workflows in Bioinformatics"
